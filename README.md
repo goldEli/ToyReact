@@ -1,2 +1,1 @@
-# ToyReact
-Created with CodeSandbox
+# Toy React
