@@ -1,7 +1,12 @@
-import * as React from "react";
-import { render } from "react-dom";
+import React from "./react";
 
-import App from "./App";
+var app = (
+  <div id="a" className="b">
+    <div></div>
+    <div></div>
+    <div></div>
+  </div>
+);
+console.log(app);
 
-const rootElement = document.getElementById("root");
-render(<App />, rootElement);
+// document.body.append(app);
