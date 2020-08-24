@@ -27,7 +27,7 @@ class ElementWapper {
     const range = document.createRange();
     range.setStart(this.root, this.root.childNodes.length);
     range.setEnd(this.root, this.root.childNodes.length);
-    range.deleteContents();
+    // range.deleteContents();
     // range.insertNode(component.root)
     component?._renderToDom?.(range);
   }
@@ -83,19 +83,24 @@ export class Component {
     };
 
     merge(newState, oldState);
-    console.log(this.state, newState);
     this.reRenderToDom();
   }
 
   _renderToDom(range: Range) {
-    // const range = document.createRange()
     this._range = range;
-    range.deleteContents();
+
     this.render()._renderToDom(range);
   }
   reRenderToDom() {
-    this._range?.deleteContents();
-    this.render()._renderToDom(this._range);
+    let oldRange = this._range;
+
+    const range = document.createRange();
+    range.setStart(oldRange?.startContainer, oldRange.startOffset);
+    range.setEnd(oldRange?.startContainer, oldRange.startOffset);
+    this._renderToDom(range);
+
+    oldRange?.setStart(range.endContainer, range.endOffset);
+    oldRange?.deleteContents();
   }
 }
 
