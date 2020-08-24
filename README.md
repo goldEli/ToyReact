@@ -5,3 +5,4 @@
 - [x] createElement
 - [x] render
 - [x] Component
+- [x] setState
