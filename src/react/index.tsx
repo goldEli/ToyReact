@@ -1,4 +1,4 @@
-type Child = ElementWapper | Componnet | TextWapper;
+type Child = ElementWapper | Component | TextWapper;
 interface Props {
   [key: string]: string;
 }
@@ -16,16 +16,19 @@ class ElementWapper {
     if (key.match(/^on([\s\S]+)/)) {
       this.root.addEventListener(RegExp.$1.toLocaleLowerCase(), value);
     }
+    if (key === "className") {
+      key = "class";
+    }
     this.root.setAttribute(key, value);
   }
   appendChild(component: ElementWapper | TextWapper) {
-    // console.log(Componnet);
-    // this.root.appendChild(Componnet.root);
+    // console.log(Component);
+    // this.root.appendChild(Component.root);
     const range = document.createRange();
     range.setStart(this.root, this.root.childNodes.length);
     range.setEnd(this.root, this.root.childNodes.length);
     range.deleteContents();
-    // range.insertNode(componnet.root)
+    // range.insertNode(component.root)
     component?._renderToDom?.(range);
   }
   _renderToDom(range: Range) {
@@ -47,7 +50,7 @@ class TextWapper {
   }
 }
 
-export class Componnet {
+export class Component {
   _root = null;
   _range: Range | null = null;
   state: {} | null = null;
@@ -58,8 +61,8 @@ export class Componnet {
   setAttribute(key: string, value: string) {
     this.props[key] = value;
   }
-  appendChild(Componnet: ElementWapper | TextWapper) {
-    this.children.push(Componnet);
+  appendChild(Component: ElementWapper | TextWapper) {
+    this.children.push(Component);
   }
 
   setState(newState: State) {
@@ -97,18 +100,18 @@ export class Componnet {
 }
 
 export const render = (
-  componnet: ElementWapper | TextWapper,
+  component: ElementWapper | TextWapper,
   container: HTMLElement
 ) => {
   const range = document.createRange();
   range.setStart(container, 0);
   range.setEnd(container, container.childNodes.length);
   range.deleteContents();
-  componnet._renderToDom(range);
+  component._renderToDom(range);
 };
 
 export const createElement = (
-  type: string | Componnet,
+  type: string | Component,
   attributes: { [key: string]: string },
   ...children: Child[]
 ) => {
