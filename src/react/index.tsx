@@ -7,56 +7,17 @@ interface State {
   [key: string]: any;
 }
 
-class ElementWapper {
-  root: HTMLElement;
-  constructor(tagName: string) {
-    this.root = document.createElement(tagName);
-  }
-  setAttribute(key: string, value: string) {
-    if (key.match(/^on([\s\S]+)/)) {
-      this.root.addEventListener(RegExp.$1.toLocaleLowerCase(), value);
-    }
-    if (key === "className") {
-      key = "class";
-    }
-    this.root.setAttribute(key, value);
-  }
-  appendChild(component: ElementWapper | TextWapper) {
-    // console.log(Component);
-    // this.root.appendChild(Component.root);
-    const range = document.createRange();
-    range.setStart(this.root, this.root.childNodes.length);
-    range.setEnd(this.root, this.root.childNodes.length);
-    // range.deleteContents();
-    // range.insertNode(component.root)
-    component?._renderToDom?.(range);
-  }
-  _renderToDom(range: Range) {
-    // const range = document.createRange()
-    range.deleteContents();
-    range.insertNode(this.root);
-  }
-}
-
-class TextWapper {
-  root: Text;
-  constructor(text: string) {
-    this.root = document.createTextNode(text);
-  }
-  _renderToDom(range: Range) {
-    // const range = document.createRange()
-    range.deleteContents();
-    range.insertNode(this.root);
-  }
-}
-
 export class Component {
   _root = null;
   _range: Range | null = null;
   state: {} | null = null;
-
   children: Child[] = [];
   props: Props = Object.create({});
+  // type: string;
+
+  get vdom() {
+    return this.render().vdom;
+  }
 
   setAttribute(key: string, value: string) {
     this.props[key] = value;
@@ -104,6 +65,68 @@ export class Component {
   }
 }
 
+class ElementWapper extends Component {
+  root: HTMLElement;
+  type: string;
+  constructor(type: string) {
+    super();
+    this.type = type;
+    this.root = document.createElement(type);
+  }
+  get vdom() {
+    return {
+      type: this.type,
+      props: this.props,
+      children: this.children.map((child) => child.vdom)
+    };
+  }
+  // setAttribute(key: string, value: string) {
+  //   if (key.match(/^on([\s\S]+)/)) {
+  //     this.root.addEventListener(RegExp.$1.toLocaleLowerCase(), value);
+  //   }
+  //   if (key === "className") {
+  //     key = "class";
+  //   }
+  //   this.root.setAttribute(key, value);
+  // }
+  // appendChild(component: ElementWapper | TextWapper) {
+  //   // console.log(Component);
+  //   // this.root.appendChild(Component.root);
+  //   const range = document.createRange();
+  //   range.setStart(this.root, this.root.childNodes.length);
+  //   range.setEnd(this.root, this.root.childNodes.length);
+  //   // range.deleteContents();
+  //   // range.insertNode(component.root)
+  //   component?._renderToDom?.(range);
+  // }
+  _renderToDom(range: Range) {
+    // const range = document.createRange()
+    range.deleteContents();
+    range.insertNode(this.root);
+  }
+}
+
+class TextWapper extends Component {
+  root: Text;
+  content: string;
+  constructor(content: string) {
+    super();
+    this.content = content;
+    this.root = document.createTextNode(content);
+  }
+  get vdom() {
+    return {
+      type: "text",
+      content: this.content
+    };
+  }
+  _renderToDom(range: Range) {
+    // const range = document.createRange()
+    range.deleteContents();
+    range.insertNode(this.root);
+  }
+}
+
 export const render = (
   component: ElementWapper | TextWapper,
   container: HTMLElement
@@ -141,7 +164,7 @@ export const createElement = (
       if (typeof child === "object" && child instanceof Array) {
         insetChild(child);
       } else {
-        e.appendChild(child);
+        child && e.appendChild(child);
       }
     }
   }
