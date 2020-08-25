@@ -13,10 +13,14 @@ export class Component {
   state: {} | null = null;
   children: Child[] = [];
   props: Props = Object.create({});
-  // type: string;
+  oldVdom: any = null;
 
   get vdom() {
     return this.render().vdom;
+  }
+
+  get vchildren() {
+    return this.children.map((child) => child.vdom);
   }
 
   setAttribute(key: string, value: string) {
@@ -24,6 +28,57 @@ export class Component {
   }
   appendChild(Component: ElementWapper | TextWapper) {
     this.children.push(Component);
+  }
+
+  replaceContent(range: Range, node: HTMLElement) {
+    range.insertNode(node);
+    range.setStartAfter(node);
+    range.deleteContents();
+
+    range.setStartBefore(node);
+    range.setEndAfter(node);
+  }
+
+  update() {
+    const isSameNode = (newNode: any, oldNode: any) => {
+      if (newNode.type !== oldNode.type) return false;
+      for (let name in newNode.props) {
+        const value = newNode.props[name];
+        if (value !== oldNode[name]) return false;
+      }
+      if (Object.keys(newNode).length !== Object.keys(oldNode).length)
+        return false;
+      if (newNode.type === "#text" && newNode.content !== oldNode.content)
+        return false;
+      return true;
+    };
+    const update = (newNode: any, oldNode: any) => {
+      if (!isSameNode(newNode, oldNode)) {
+        newNode._renderToDom(oldNode._range);
+        return;
+      }
+      const newChildren = newNode.vchildren;
+      const oldChildren = oldNode.vchildren;
+
+      if (!newChildren && newChildren.length) return;
+
+      let tailRange = oldChildren[oldChildren.length - 1]._range;
+
+      for (let i = 0; i < oldChildren.length; ++i) {
+        if (i < oldChildren.length) {
+          update(newChildren[i], oldChildren[i]);
+        } else {
+          let range = document.createRange();
+          range.setStart(tailRange.endContainer, tailRange.endOffset);
+          range.setEnd(tailRange.endContainer, tailRange.endOffset);
+          newChildren[i]._renderToDom(range);
+          tailRange = range;
+        }
+      }
+    };
+    const newVdom = this.vdom;
+    update(newVdom, this.oldVdom);
+    this.oldVdom = newVdom;
   }
 
   setState(newState: State) {
@@ -44,67 +99,28 @@ export class Component {
     };
 
     merge(newState, oldState);
-    this.reRenderToDom();
+    this.update();
   }
 
   _renderToDom(range: Range) {
     this._range = range;
-
-    this.render()._renderToDom(range);
-  }
-  reRenderToDom() {
-    let oldRange = this._range;
-
-    const range = document.createRange();
-    range.setStart(oldRange?.startContainer, oldRange.startOffset);
-    range.setEnd(oldRange?.startContainer, oldRange.startOffset);
-    this._renderToDom(range);
-
-    oldRange?.setStart(range.endContainer, range.endOffset);
-    oldRange?.deleteContents();
+    this.oldVdom = this.render();
+    this.oldVdom._renderToDom(range);
   }
 }
 
 class ElementWapper extends Component {
-  // root: HTMLElement;
   type: string;
   constructor(type: string) {
     super();
     this.type = type;
-    // this.root = document.createElement(type);
   }
   get vdom() {
     return this;
-    // return {
-    //   type: this.type,
-    //   props: this.props,
-    //   children: this.children.map((child) => child.vdom)
-    // };
   }
-  /*
-  setAttribute(key: string, value: string) {
-    if (key.match(/^on([\s\S]+)/)) {
-      this.root.addEventListener(RegExp.$1.toLocaleLowerCase(), value);
-    }
-    if (key === "className") {
-      key = "class";
-    }
-    this.root.setAttribute(key, value);
-  }
-  appendChild(component: ElementWapper | TextWapper) {
-    // console.log(Component);
-    // this.root.appendChild(Component.root);
-    const range = document.createRange();
-    range.setStart(this.root, this.root.childNodes.length);
-    range.setEnd(this.root, this.root.childNodes.length);
-    // range.deleteContents();
-    // range.insertNode(component.root)
-    component?._renderToDom?.(range);
-  }
-  */
   _renderToDom(range: Range) {
-    // const range = document.createRange()
-    range.deleteContents();
+    this._range = range;
+    if (!range) return;
     let root = document.createElement(this.type);
 
     for (let key in this.props) {
@@ -118,37 +134,31 @@ class ElementWapper extends Component {
       root.setAttribute(key, value);
     }
 
-    for (let child of this.children) {
+    for (let child of this.vchildren) {
       const childRange = document.createRange();
       childRange.setStart(root, root.childNodes.length);
       childRange.setEnd(root, root.childNodes.length);
       child?._renderToDom?.(childRange);
     }
 
-    range.insertNode(root);
+    this.replaceContent(range, root);
   }
 }
 
 class TextWapper extends Component {
-  root: Text;
   content: string;
-  type = "text";
+  type = "#text";
   constructor(content: string) {
     super();
     this.content = content;
-    this.root = document.createTextNode(content);
   }
   get vdom() {
     return this;
-    // return {
-    //   type: "text",
-    //   content: this.content
-    // };
   }
   _renderToDom(range: Range) {
-    // const range = document.createRange()
-    range.deleteContents();
-    range.insertNode(this.root);
+    const root = document.createTextNode(this.content);
+    this._range = range;
+    this.replaceContent(range, root);
   }
 }
 
